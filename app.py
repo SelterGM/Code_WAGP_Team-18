@@ -169,10 +169,19 @@ for msg in st.session_state.chat:
 # User Input
 # --------------------------------------------------
 frage = st.chat_input("Stelle eine Frage zu Studium oder Karriere")
+key="chat_input_main"
 
 if frage:
-    st.session_state.chat.append({"role": "user", "content": frage})
+    # 1️⃣ User-Nachricht SOFORT anzeigen
+    st.session_state.chat.append({
+        "role": "user",
+        "content": frage
+    })
 
+    with st.chat_message("user"):
+        st.markdown(frage)
+
+    # 2️⃣ Messages für OpenAI bauen
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "system", "content": f"""
@@ -186,14 +195,16 @@ Schwerpunkt: {schwerpunkt}
     if studiengang in PRUEFUNGSORDNUNG:
         messages.append({
             "role": "system",
-            "content": json.dumps(
-                PRUEFUNGSORDNUNG[studiengang],
-                ensure_ascii=False
-            )
+            "content": f"""
+Relevante Prüfungsordnung für {studiengang}:
+{json.dumps(PRUEFUNGSORDNUNG[studiengang], ensure_ascii=False)}
+"""
         })
 
-    messages.extend(st.session_state.chat)
+    for msg in st.session_state.chat:
+        messages.append(msg)
 
+    # 3️⃣ KI-Antwort holen
     antwort = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=messages,
@@ -201,8 +212,11 @@ Schwerpunkt: {schwerpunkt}
         max_tokens=500
     ).choices[0].message.content
 
-    st.session_state.chat.append({"role": "assistant", "content": antwort})
+    # 4️⃣ Antwort speichern & anzeigen
+    st.session_state.chat.append({
+        "role": "assistant",
+        "content": antwort
+    })
 
     with st.chat_message("assistant"):
         st.markdown(antwort)
-
